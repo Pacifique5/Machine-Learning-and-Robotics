@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import HTML, Markdown, Image, JSON
-
 # Create the sample DataFrame
 cars = {
     'vin': ['1HGCM82633A123456', '1HGCM82633A654321', '1HGCM82633A789012'],
@@ -19,4 +18,10 @@ cars = {
     'registration_date': ['2020-05-20', '2018-07-15', '2021-01-10']
 }
 df = pd.DataFrame(cars)
+df['registration_date'] = pd.to_datetime(df['registration_date'])
 display(df)
+
+# Conditional
+# print(df[df['year']==2018])
+ndf = df[df["year"]==2018]
+print(ndf)
