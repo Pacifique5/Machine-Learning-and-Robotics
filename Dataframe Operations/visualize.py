@@ -1,0 +1,7 @@
+status_counts = df['status'].value_counts()
+fig, ax = plt.subplots()
+status_counts.plot(kind='pie', ax=ax, autopct='%1.1f%%')
+ax.set_ylabel('')
+ax.set_title('Status Distribution')
+plt.tight_layout()
+plt.show()
