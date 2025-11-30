@@ -1,0 +1,7 @@
+avg_price = df.groupby('brand')['price'].mean()
+fig, ax = plt.subplots()
+avg_price.plot(kind='bar', ax=ax)
+ax.set_title('Average Price by Brand')
+ax.set_ylabel('Price')
+plt.tight_layout()
+plt.show()
