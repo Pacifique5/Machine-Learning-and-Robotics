@@ -1,0 +1,35 @@
+# Virtual environments
+**/venv/
+**/.venv/
+**/mp_env/
+**/myvenv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large binary files
+*.dll
+*.so
+*.dylib
+
+# Database files
+*.sqlite3
+*.db
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
