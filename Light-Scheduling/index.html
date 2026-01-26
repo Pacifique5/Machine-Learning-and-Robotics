@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Light Scheduler</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="container">
+    <h1>💡 Light Scheduler</h1>
+    <form id="schedule-form">
+      <div class="input-group">
+        <label for="on-time">⏰ ON Time</label>
+        <input type="time" id="on-time" name="on-time" required />
+      </div>
+      <div class="input-group">
+        <label for="off-time">⏳ OFF Time</label>
+        <input type="time" id="off-time" name="off-time" required />
+      </div>
+      <div class="btn-container">
+        <button type="submit">Set Schedule</button>
+      </div>
+    </form>
+    <p id="status">🔌 Not connected</p>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
