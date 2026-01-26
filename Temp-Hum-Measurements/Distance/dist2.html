@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Smart Weather Station (MQTT WebSockets)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.2.1/chart.umd.min.js"></script>
+    <style>
+        /* 🔥 Futuristic Glassmorphism Styling */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            margin: 0;
+            text-align: center;
+        }
+
+        .container {
+            width: 420px;
+            padding: 30px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        h2 {
+            font-size: 26px;
+            text-shadow: 2px 2px 10px rgba(255, 255, 255, 0.4);
+        }
+
+        .data {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 1px 1px 10px rgba(255, 255, 255, 0.6);
+        }
+
+        /* 🚀 Circular Gauge (Animated Distance Meter) */
+        .gauge-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+        }
+
+        .gauge-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring__circle {
+            stroke-width: 10;
+            fill: none;
+            stroke: #ffffff40;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.5s ease-in-out;
+        }
+
+        .progress-ring__circle--progress {
+            stroke: #00ff00;
+            stroke-dasharray: 0 314; /* Dynamic Update */
+        }
+
+        /* 🔥 Neon Glow Effects */
+        .neon {
+            animation: neonGlow 1.2s infinite alternate;
+        }
+
+        @keyframes neonGlow {
+            0% { text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.3); }
+            100% { text-shadow: 0px 0px 15px rgba(255, 255, 255, 1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🚀 Distance Detection System 🚶🏻</h2>
+        <p>Distance: <span id="distance" class="data">--</span> cm</p>
+
+        <!-- 🎯 Animated Distance Meter -->
+        <div class="gauge-container">
+            <svg class="progress-ring" width="200" height="200">
+                <circle cx="100" cy="100" r="50" class="progress-ring__circle" />
+                <circle cx="100" cy="100" r="50" class="progress-ring__circle progress-ring__circle--progress" id="progress-circle" />
+            </svg>
+            <div class="gauge-text" id="distance-text">-- cm</div>
+        </div>
+
+        <canvas id="distanceChart" width="400" height="200"></canvas>
+    </div>
+
+    <script>
+        // 🎯 Connect to MQTT Broker
+        const mqttClient = mqtt.connect('ws://157.173.101.159:9001');
+
+        mqttClient.on('connect', () => {
+            console.log("✅ Connected to MQTT via WebSockets");
+            mqttClient.subscribe("/honore_dieudonne_pacifique/room_distance");
+        });
+
+        mqttClient.on('message', (topic, message) => {
+            console.log(`📡 Received: ${topic} → ${message.toString()}`);
+
+            if (topic === "/honore_dieudonne_pacifique/room_distance") {
+                let distance = parseFloat(message.toString());
+                document.getElementById("distance").innerText = distance + " cm";
+                document.getElementById("distance-text").innerText = distance + " cm";
+
+                updateDistanceMeter(distance);
+                updateChart(distance);
+            }
+        });
+
+        // 🎯 Circular Meter Updates
+        function updateDistanceMeter(distance) {
+            let maxDistance = 100; // Adjust based on sensor range
+            let percentage = Math.min((distance / maxDistance) * 100, 100);
+            let circle = document.getElementById("progress-circle");
+
+            let circumference = 2 * Math.PI * 50; // Circumference of the circle
+            let offset = circumference - (percentage / 100) * circumference;
+
+            circle.style.strokeDasharray = `${circumference - offset} ${circumference}`;
+
+            // Change Color Based on Distance
+            if (percentage < 30) {
+                circle.style.stroke = "#00ff00"; // Green (Safe)
+            } else if (percentage < 70) {
+                circle.style.stroke = "#ffcc00"; // Yellow (Warning)
+            } else {
+                circle.style.stroke = "#ff0000"; // Red (Danger)
+            }
+        }
+
+        // 🎯 Real-time Distance Chart
+        let ctx = document.getElementById("distanceChart").getContext("2d");
+        let distanceChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Distance (cm)",
+                    borderColor: "#00ffcc",
+                    backgroundColor: "rgba(0, 255, 204, 0.2)",
+                    data: [],
+                    tension: 0.4,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { display: false },
+                    y: { beginAtZero: true, max: 100 }
+                }
+            }
+        });
+
+        function updateChart(distance) {
+            let now = new Date().toLocaleTimeString();
+            let data = distanceChart.data;
+            
+            if (data.labels.length > 10) {
+                data.labels.shift();
+                data.datasets[0].data.shift();
+            }
+
+            data.labels.push(now);
+            data.datasets[0].data.push(distance);
+            distanceChart.update();
+        }
+    </script>
+
+</body>
+</html>

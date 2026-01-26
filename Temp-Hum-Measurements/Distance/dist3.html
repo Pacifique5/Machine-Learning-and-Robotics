@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Weather Station (MQTT)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            transition: background 0.5s ease-in-out;
+            background: linear-gradient(135deg, #1f1c2c, #928DAB);
+            color: #fff;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 25px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h2 {
+            font-size: 28px;
+            text-shadow: 2px 2px 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .data {
+            font-size: 30px;
+            font-weight: bold;
+            text-shadow: 2px 2px 10px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Progress Bar */
+        .progress-bar-container {
+            width: 100%;
+            height: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.4s ease-in-out;
+            border-radius: 10px;
+        }
+
+        /* Light/Dark Mode Toggle */
+        .theme-toggle {
+            margin-top: 15px;
+            padding: 10px 15px;
+            cursor: pointer;
+            background: #ffcc00;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .theme-toggle:hover {
+            background: #ffdd44;
+        }
+
+        /* Dark Mode Styles */
+        body.dark {
+            background: linear-gradient(135deg, #232526, #414345);
+        }
+
+        body.dark .theme-toggle {
+            background: #00ccff;
+            color: #fff;
+        }
+
+        body.dark .container {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Chart Styling */
+        canvas {
+            margin-top: 20px;
+            max-width: 100%;
+        }
+
+    </style>
+</head>
+<body>
+
+    <button class="theme-toggle" onclick="toggleTheme()">🌗 Toggle Theme</button>
+
+    <div class="container">
+        <h2>🌡 Smart Weather Station 🚀</h2>
+        <p>Distance: <span id="distance" class="data">--</span> cm</p>
+
+        <div class="progress-bar-container">
+            <div id="distance-bar" class="progress-bar"></div>
+        </div>
+
+        <!-- Live Chart -->
+        <canvas id="distanceChart"></canvas>
+    </div>
+
+    <script>
+        // Theme Toggle
+        function toggleTheme() {
+            document.body.classList.toggle("dark");
+        }
+
+        // MQTT Connection
+        const mqttClient = mqtt.connect('ws://157.173.101.159:9001');
+
+        mqttClient.on('connect', () => {
+            console.log("Connected to MQTT WebSockets");
+            mqttClient.subscribe("/honore_dieudonne_pacifique/room_distance");
+        });
+
+        let distanceData = [];
+        let timeLabels = [];
+        const maxDataPoints = 10; // Show last 10 readings
+
+        // Chart.js Setup
+        const ctx = document.getElementById('distanceChart').getContext('2d');
+        const distanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'Distance (cm)',
+                    data: distanceData,
+                    borderColor: '#00ffcc',
+                    backgroundColor: 'rgba(0, 255, 204, 0.2)',
+                    borderWidth: 2,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#fff',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y: {
+                        ticks: { color: '#fff' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                }
+            }
+        });
+
+        mqttClient.on('message', (topic, message) => {
+            if (topic === "/honore_dieudonne_pacifique/room_distance") {
+                let distance = parseFloat(message.toString());
+                document.getElementById("distance").innerText = distance + " cm";
+
+                let maxDistance = 100; 
+                let percentage = Math.min((distance / maxDistance) * 100, 100);
+                
+                let progressBar = document.getElementById("distance-bar");
+                progressBar.style.width = percentage + "%";
+
+                if (percentage < 30) {
+                    progressBar.style.background = "#00ff00";
+                } else if (percentage < 70) {
+                    progressBar.style.background = "#ffcc00";
+                } else {
+                    progressBar.style.background = "#ff0000";
+                }
+
+                // Update Chart Data
+                let now = new Date().toLocaleTimeString();
+                timeLabels.push(now);
+                distanceData.push(distance);
+
+                if (distanceData.length > maxDataPoints) {
+                    timeLabels.shift();
+                    distanceData.shift();
+                }
+
+                distanceChart.update();
+            }
+        });
+    </script>
+
+</body>
+</html>

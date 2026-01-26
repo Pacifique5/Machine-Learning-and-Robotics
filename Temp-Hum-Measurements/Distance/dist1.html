@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Smart Weather Station (MQTT WebSockets)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.2.1/chart.umd.min.js"></script>
+    <style>
+        /* 🔥 Futuristic Glassmorphism Styling */
+        :root {
+            --bg-color: #1a1a2e;
+            --container-bg: rgba(255, 255, 255, 0.1);
+            --text-color: white;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .light-theme {
+            --bg-color: #f5f5f5;
+            --container-bg: rgba(0, 0, 0, 0.1);
+            --text-color: #333;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --border-color: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-color);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color);
+            margin: 0;
+            text-align: center;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            width: 420px;
+            padding: 30px;
+            border-radius: 15px;
+            background: var(--container-bg);
+            box-shadow: 0px 8px 30px var(--shadow-color);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--border-color);
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        h2 {
+            font-size: 26px;
+            text-shadow: 2px 2px 10px rgba(255, 255, 255, 0.4);
+        }
+
+        .data {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        /* 🚀 Circular Gauge (Animated Distance Meter) */
+        .gauge-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+        }
+
+        .gauge-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring__circle {
+            stroke-width: 10;
+            fill: none;
+            stroke: #ffffff40;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.5s ease-in-out;
+        }
+
+        .progress-ring__circle--progress {
+            stroke: #00ff00;
+            stroke-dasharray: 0 314; /* Dynamic Update */
+        }
+
+        /* 🚀 Status Styles */
+        .status {
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        .status.near { background: #00ff00; color: black; }
+        .status.moderate { background: #ffcc00; color: black; }
+        .status.away { background: #ff0000; color: white; }
+
+        /* 🎛️ Theme Toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--container-bg);
+            color: var(--text-color);
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+    </style>
+</head>
+<body>
+
+    <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+
+    <div class="container">
+        <h2>🚀 Distance Detection System 🚶🏻</h2>
+        <p>Distance: <span id="distance" class="data">--</span> cm</p>
+
+        <!-- 🎯 Animated Distance Meter -->
+        <div class="gauge-container">
+            <svg class="progress-ring" width="200" height="200">
+                <circle cx="100" cy="100" r="50" class="progress-ring__circle" />
+                <circle cx="100" cy="100" r="50" class="progress-ring__circle progress-ring__circle--progress" id="progress-circle" />
+            </svg>
+            <div class="gauge-text" id="distance-text">-- cm</div>
+        </div>
+
+        <!-- 🚀 Dynamic Status Indicator -->
+        <p id="status" class="status">Waiting...</p>
+
+        <canvas id="distanceChart" width="400" height="200"></canvas>
+    </div>
+
+    <script>
+        // 🎯 Theme Toggle Function
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            let button = document.querySelector('.theme-toggle');
+            if (document.body.classList.contains('light-theme')) {
+                button.innerText = "☀️ Light Mode";
+            } else {
+                button.innerText = "🌙 Dark Mode";
+            }
+        }
+
+        // 🎯 Connect to MQTT Broker
+        const mqttClient = mqtt.connect('ws://157.173.101.159:9001');
+
+        mqttClient.on('connect', () => {
+            console.log("✅ Connected to MQTT via WebSockets");
+            mqttClient.subscribe("/honore_dieudonne_pacifique/room_distance");
+        });
+
+        mqttClient.on('message', (topic, message) => {
+            console.log(`📡 Received: ${topic} → ${message.toString()}`);
+
+            if (topic === "/honore_dieudonne_pacifique/room_distance") {
+                let distance = parseFloat(message.toString());
+                document.getElementById("distance").innerText = distance + " cm";
+                document.getElementById("distance-text").innerText = distance + " cm";
+
+                updateDistanceMeter(distance);
+                updateChart(distance);
+                updateStatus(distance);
+            }
+        });
+
+        function updateDistanceMeter(distance) {
+            let maxDistance = 100;
+            let percentage = Math.min((distance / maxDistance) * 100, 100);
+            let circle = document.getElementById("progress-circle");
+            let circumference = 2 * Math.PI * 50;
+            let offset = circumference - (percentage / 100) * circumference;
+            circle.style.strokeDasharray = `${circumference - offset} ${circumference}`;
+        }
+
+        function updateStatus(distance) {
+            let statusEl = document.getElementById("status");
+            if (distance <= 30) {
+                statusEl.textContent = "Near";
+                statusEl.className = "status near";
+            } else if (distance <= 70) {
+                statusEl.textContent = "Moderate";
+                statusEl.className = "status moderate";
+            } else {
+                statusEl.textContent = "Away";
+                statusEl.className = "status away";
+            }
+        }
+    </script>
+
+</body>
+</html>
