@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Station (MQTT WebSockets)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f9f9f9; }
+        .container { width: 80%; margin: auto; padding: 20px; border: 2px solid #007BFF; border-radius: 10px; background: #ffffff; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        h2 { color: #007BFF; font-size: 32px; font-weight: bold; margin-bottom: 20px; }
+        .data { font-size: 28px; font-weight: bold; color: #333; }
+        canvas { margin-top: 30px; width: 90%; height: 400px; margin: auto; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); background-color: #f7f7f7; }
+        .data-container { display: flex; justify-content: space-between; margin: 20px 0; }
+        .data p { font-size: 22px; }
+        /* Chart.js Styling */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+            margin: 20px auto;
+        }
+        .chart-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 20px;
+        }
+        .legend-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .legend-item {
+            margin: 0 10px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .legend-item span {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 5px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <h2>MQTT Weather Station</h2>
+    <div class="container">
+        <div class="data-container">
+            <p>Temperature: <span id="temp" class="data">--</span> °C</p>
+            <p>Humidity: <span id="humidity" class="data">--</span> %</p>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="chart-container">
+            <canvas id="weatherChart"></canvas>
+            <div class="chart-title">Real-Time Weather Data</div>
+            <div class="legend-container">
+                <div class="legend-item">
+                    <span style="background-color: rgb(255, 99, 132);"></span> Temperature (°C)
+                </div>
+                <div class="legend-item">
+                    <span style="background-color: rgb(54, 162, 235);"></span> Humidity (%)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Connect to the MQTT Broker over WebSockets
+        const mqttClient = mqtt.connect('ws://157.173.101.159:9001');
+
+        let lastTemp = null;
+        let lastHumidity = null;
+
+        // Prepare the chart
+        const ctx = document.getElementById('weatherChart').getContext('2d');
+        const weatherChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Time labels
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: [],
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderWidth: 2,
+                    pointRadius: 5,
+                    pointBackgroundColor: 'rgb(255, 99, 132)',
+                    pointBorderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                }, {
+                    label: 'Humidity (%)',
+                    data: [],
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderWidth: 2,
+                    pointRadius: 5,
+                    pointBackgroundColor: 'rgb(54, 162, 235)',
+                    pointBorderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        ticks: {
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 20,
+                        },
+                    },
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            padding: 10,
+                        },
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 16,
+                            },
+                            boxWidth: 15,
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return tooltipItem.dataset.label + ': ' + tooltipItem.raw.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        mqttClient.on('connect', () => {
+            console.log("Connected to MQTT via WebSockets");
+            mqttClient.subscribe("/work_group_01/room_temp/temperature");
+            mqttClient.subscribe("/work_group_01/room_temp/humidity");
+        });
+
+        mqttClient.on('message', (topic, message) => {
+            console.log(`Received: ${topic} → ${message.toString()}`);
+
+            const value = parseFloat(message.toString());
+
+            // Temperature data handling
+            if (topic === "/work_group_01/room_temp/temperature" && Math.abs(value - lastTemp) > 0.2) {
+                lastTemp = value;
+                document.getElementById("temp").innerText = value.toFixed(2);
+            }
+
+            // Humidity data handling
+            if (topic === "/work_group_01/room_temp/humidity" && Math.abs(value - lastHumidity) > 2) {
+                lastHumidity = value;
+                document.getElementById("humidity").innerText = value.toFixed(2);
+            }
+
+            // Push data to chart (5-minute averaging can be handled server-side)
+            const time = new Date().getTime();
+            if (topic === "/work_group_01/room_temp/temperature") {
+                weatherChart.data.labels.push(time);
+                weatherChart.data.datasets[0].data.push(value);
+            } else if (topic === "/work_group_01/room_temp/humidity") {
+                weatherChart.data.labels.push(time);
+                weatherChart.data.datasets[1].data.push(value);
+            }
+
+            weatherChart.update();
+        });
+    </script>
+</body>
+</html>

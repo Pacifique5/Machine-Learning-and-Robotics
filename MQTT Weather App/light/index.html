@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Light Control</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #121212;
+            color: #f0f0f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        h1 {
+            color: #f0f0f0;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+        .button-container {
+            margin: 30px 0;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        #turnOnBtn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #turnOnBtn:hover {
+            background-color: #45a049;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+        #turnOffBtn {
+            background-color: #f44336;
+            color: white;
+        }
+        #turnOffBtn:hover {
+            background-color: #da190b;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+        #status {
+            font-size: 20px;
+            color: #aaa;
+            margin-top: 20px;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .light-container {
+            position: relative;
+            margin: 30px auto;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .ceiling {
+            width: 120px;
+            height: 10px;
+            background-color: #555;
+            border-radius: 5px;
+        }
+        .wire {
+            width: 4px;
+            height: 50px;
+            background-color: #333;
+        }
+        .bulb-base {
+            width: 30px;
+            height: 20px;
+            background-color: #777;
+            border-radius: 5px 5px 0 0;
+        }
+        .light-bulb {
+            width: 100px;
+            height: 150px;
+            position: relative;
+            transition: all 0.5s ease;
+        }
+        .light-bulb.on {
+            filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.9));
+        }
+        .light-bulb.on path {
+            fill: #FFEB3B;
+        }
+        .light-bulb.off path {
+            fill: #aaa;
+        }
+        .light-glow {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,215,0,0) 70%);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -30%);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: -1;
+        }
+        .light-bulb.on + .light-glow {
+            opacity: 1;
+        }
+        .room-floor {
+            width: 300px;
+            height: 5px;
+            background-color: #555;
+            margin-top: 50px;
+            border-radius: 2px;
+        }
+        @keyframes flicker {
+            0% { filter: brightness(1) drop-shadow(0 0 30px rgba(255, 215, 0, 0.9)); }
+            5% { filter: brightness(0.8) drop-shadow(0 0 25px rgba(255, 215, 0, 0.7)); }
+            10% { filter: brightness(1.2) drop-shadow(0 0 35px rgba(255, 215, 0, 1)); }
+            15% { filter: brightness(1) drop-shadow(0 0 30px rgba(255, 215, 0, 0.9)); }
+            20% { filter: brightness(0.9) drop-shadow(0 0 28px rgba(255, 215, 0, 0.8)); }
+            25% { filter: brightness(1.1) drop-shadow(0 0 32px rgba(255, 215, 0, 0.95)); }
+            30% { filter: brightness(1) drop-shadow(0 0 30px rgba(255, 215, 0, 0.9)); }
+            100% { filter: brightness(1) drop-shadow(0 0 30px rgba(255, 215, 0, 0.9)); }
+        }
+        .light-bulb.flicker {
+            animation: flicker 2s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <h1>MQTT Light Control</h1>
+    
+    <div class="light-container">
+        <div class="ceiling"></div>
+        <div class="wire"></div>
+        <div class="bulb-base"></div>
+        <svg id="lightBulb" class="light-bulb off" viewBox="0 0 64 64">
+            <path d="M32 2C18.75 2 8 12.75 8 26c0 8.25 4.25 15.5 10.75 19.75L22 50v6h20v-6l3.25-4.25C51.75 41.5 56 34.25 56 26 56 12.75 45.25 2 32 2z" fill="#aaa"/>
+            <rect x="26" y="56" width="12" height="6" fill="#666"/>
+        </svg>
+        <div class="light-glow"></div>
+        <div class="room-floor"></div>
+    </div>
+    
+    <div class="button-container">
+        <button id="turnOnBtn">Turn ON</button>
+        <button id="turnOffBtn">Turn OFF</button>
+    </div>
+    <p id="status">Last Command: None</p>
+
+    <script>
+        // MQTT setup
+        const mqttClient = mqtt.connect('ws://157.173.101.159:9001');
+        const lightBulb = document.getElementById('lightBulb');
+
+        mqttClient.on('connect', () => {
+            console.log('Connected to MQTT broker');
+            mqttClient.subscribe('/student_group/light_status');
+        });
+
+        mqttClient.on('error', (err) => {
+            console.error('MQTT Error:', err);
+        });
+
+        mqttClient.on('message', (topic, message) => {
+            const state = message.toString();
+            console.log(`Received: ${topic} → ${state}`);
+            if (topic === '/student_group/light_status') {
+                if (state === 'ON') {
+                    lightBulb.classList.remove('off');
+                    lightBulb.classList.add('on');
+                    lightBulb.classList.add('flicker');
+                    setTimeout(() => {
+                        lightBulb.classList.remove('flicker');
+                    }, 2000);
+                    document.getElementById('status').innerText = 'Last Command: ON';
+                    document.getElementById('status').style.color = '#FFEB3B';
+                } else if (state === 'OFF') {
+                    lightBulb.classList.remove('on');
+                    lightBulb.classList.add('off');
+                    document.getElementById('status').innerText = 'Last Command: OFF';
+                    document.getElementById('status').style.color = '#aaa';
+                }
+            }
+        });
+
+        // Button event listeners
+        document.getElementById('turnOnBtn').addEventListener('click', () => {
+            mqttClient.publish('/student_group/light_control', 'ON');
+            console.log('Published: ON');
+            
+            // Also update UI immediately for better user experience
+            lightBulb.classList.remove('off');
+            lightBulb.classList.add('on');
+            lightBulb.classList.add('flicker');
+            setTimeout(() => {
+                lightBulb.classList.remove('flicker');
+            }, 2000);
+            document.getElementById('status').innerText = 'Last Command: ON';
+            document.getElementById('status').style.color = '#FFEB3B';
+        });
+
+        document.getElementById('turnOffBtn').addEventListener('click', () => {
+            mqttClient.publish('/student_group/light_control', 'OFF');
+            console.log('Published: OFF');
+            
+            // Also update UI immediately for better user experience
+            lightBulb.classList.remove('on');
+            lightBulb.classList.add('off');
+            document.getElementById('status').innerText = 'Last Command: OFF';
+            document.getElementById('status').style.color = '#aaa';
+        });
+    </script>
+</body>
+</html>

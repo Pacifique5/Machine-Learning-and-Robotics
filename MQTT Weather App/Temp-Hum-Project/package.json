@@ -1,0 +1,19 @@
+{
+    "name": "mqtt-weather-station",
+    "version": "1.0.0",
+    "description": "Weather Station project using MQTT and SQLite",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "chart.js": "^3.7.0",
+        "express": "^4.21.2",
+        "mqtt": "^4.3.8",
+        "sqlite3": "^5.1.7"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs"
+}
