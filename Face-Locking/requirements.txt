@@ -1,0 +1,4 @@
+opencv-python>=4.5.0
+numpy>=1.21.0
+onnxruntime>=1.15.1
+mediapipe==0.10.11
