@@ -196,6 +196,7 @@ def main():
     cv2.resizeWindow(cfg.window_aligned, 240, 240)
 
     print("\nEnrollment started.")
+    print("🎯 IMPORTANT: Click on the camera window to give it focus for keyboard input!")
     if base_samples:
         print(f"Re-enroll mode: found {len(base_samples)} existing samples in {person_dir}/")
     print("Tip: stable lighting, move slightly left/right, different expressions.")
@@ -264,30 +265,46 @@ def main():
             )
 
             cv2.imshow(cfg.window_main, vis)
-            key = cv2.waitKey(1) & 0xFF
+            
+            # Ensure window has focus and increase wait time for better key detection
+            cv2.setWindowProperty(cfg.window_main, cv2.WND_PROP_TOPMOST, 1)
+            cv2.setWindowProperty(cfg.window_main, cv2.WND_PROP_TOPMOST, 0)  # Remove topmost but keep focus
+            
+            key = cv2.waitKey(30) & 0xFF  # Increased from 1 to 30ms
+            
+            # Debug: show key presses
+            if key != 255:  # 255 means no key pressed
+                print(f"Key pressed: {key} ('{chr(key) if 32 <= key <= 126 else 'special'}')")
 
             if key == ord("q"):
+                print("Quit key detected - exiting...")
                 break
 
             if key == ord("a"):
                 auto = not auto
                 status_msg = f"Auto mode {'ON' if auto else 'OFF'}"
+                print(f"Auto mode toggled: {status_msg}")
 
             if key == ord("r"):
                 new_samples.clear()
                 status_msg = "NEW samples reset (existing kept)."
+                print(status_msg)
 
             if key == ord(" "):  # SPACE
+                print("SPACE key detected!")
                 if aligned is None:
                     status_msg = "No face detected. Not captured."
+                    print("❌ " + status_msg)
                 else:
                     r = emb.embed(aligned)
                     new_samples.append(r.embedding)
                     status_msg = f"Captured NEW ({len(new_samples)})"
+                    print("✅ " + status_msg)
 
                     if cfg.save_crops:
                         fn = person_dir / f"{int(time.time() * 1000)}.jpg"
                         cv2.imwrite(str(fn), aligned)
+                        print(f"💾 Saved image: {fn.name}")
 
             if key == ord("s") or (auto and len(new_samples) >= cfg.samples_needed):
                 total = len(base_samples) + len(new_samples)
